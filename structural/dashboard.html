@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Plagiarism Dashboard</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0B1220;
+    color:white;
+}
+
+.navbar{
+    background:#111827;
+    padding:20px;
+    font-size:24px;
+    font-weight:bold;
+}
+
+.container{
+    padding:40px;
+}
+
+.cards{
+    display:flex;
+    gap:20px;
+}
+
+.card{
+    background:#1E293B;
+    padding:20px;
+    border-radius:10px;
+    width:250px;
+}
+
+.big-card{
+    background:#1E293B;
+    margin-top:30px;
+    padding:30px;
+    border-radius:10px;
+}
+
+button{
+    background:#2563EB;
+    border:none;
+    color:white;
+    padding:12px 20px;
+    border-radius:6px;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+Code Plagiarism Detection Dashboard
+</div>
+
+<div class="container">
+
+<div class="cards">
+
+<div class="card">
+<h3>Total Files Checked</h3>
+<h1>24</h1>
+</div>
+
+<div class="card">
+<h3>Average Similarity</h3>
+<h1>68%</h1>
+</div>
+
+<div class="card">
+<h3>Last Result</h3>
+<h1>High</h1>
+</div>
+
+</div>
+
+<div class="big-card">
+<h2>Start New Analysis</h2>
+<p>Upload new files to check plagiarism</p>
+<button>Upload Files</button>
+</div>
+
+<div class="big-card">
+<h2>Latest Analysis Result</h2>
+
+<p>Lexical Similarity : 60%</p>
+<p>Structural Similarity : 100%</p>
+<p>Semantic Similarity : 33%</p>
+<p><b>Final Score : 68%</b></p>
+
+</div>
+
+</div>
+
+</body>
+</html>
