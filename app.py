@@ -2,6 +2,9 @@ import streamlit as st
 import subprocess
 import time
 
+from db import create_table
+create_table()
+
 st.set_page_config(page_title="Code Plagiarism Detection Tool", layout="centered")
 
 # ---------- SIDEBAR NAVIGATION ----------
