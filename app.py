@@ -2,51 +2,57 @@ import streamlit as st
 import subprocess
 import time
 
-from db import create_table
+from db import (
+    create_table,
+    check_user,
+    add_default_user,
+    get_all_results,
+    get_results,
+    save_result
+)
+
+# ---------- PAGE CONFIG ----------
+st.set_page_config(page_title="Code Plagiarism Detection Tool", layout="centered")
+
+# ---------- DB SETUP ----------
 create_table()
-
-from db import check_user, add_default_user
-
 add_default_user()
+
+# ---------- LOGIN ----------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-if not st.session_state.logged_in:
-    st.title("Login")
-    username=st.text_input("Username")
-    password=st.text_input("Password", type="password")
 
-    #BUTTON BLOCK
+if not st.session_state.logged_in:
+
+    st.title("Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
     if st.button("Login"):
         user = check_user(username, password)
+
         if user:
             st.session_state.logged_in = True
             st.session_state.username = user[0]
             st.session_state.role = user[2]
-            st.success("Logged in successfully!")
+            st.success("Login successful")
+            st.rerun()
         else:
-            st.error("Invalid username or password.")
-    st.stop()   
+            st.error("Invalid credentials")
 
-st.set_page_config(page_title="Code Plagiarism Detection Tool", layout="centered")
+    st.stop()
 
-# ---------- SIDEBAR NAVIGATION ----------
+# ---------- SIDEBAR ----------
 st.sidebar.title("Navigation")
-
-page = st.sidebar.radio(
-    "Go to",
-    ["Upload Page", "Dashboard"]
-)
+page = st.sidebar.radio("Go to", ["Upload Page", "Dashboard"])
 
 # ==================================================
 # ================= UPLOAD PAGE ====================
 # ==================================================
-if page == "Upload Page":
+if page == "Upload Page" and st.session_state.role == "Student":
 
     st.title("Code Plagiarism Detection Tool")
-    st.write(
-        "Upload two Python files to check plagiarism using "
-        "Lexical, Structural, and Semantic analysis."
-    )
 
     file1 = st.file_uploader("Upload Code File 1 (.py)", type=["py"])
     file2 = st.file_uploader("Upload Code File 2 (.py)", type=["py"])
@@ -79,72 +85,109 @@ if page == "Upload Page":
 
             # ---------- PARSING ----------
             lexical = structural = semantic = final_score = 0.0
-            lexical_reason = structural_reason = semantic_reason = ""
 
             for line in result.splitlines():
                 if line.startswith("Lexical Score"):
                     lexical = float(line.split(":")[1])
-                elif line.startswith("Lexical Reason"):
-                    lexical_reason = line.split(":", 1)[1]
                 elif line.startswith("Structural Score"):
                     structural = float(line.split(":")[1])
-                elif line.startswith("Structural Reason"):
-                    structural_reason = line.split(":", 1)[1]
                 elif line.startswith("Semantic Score"):
                     semantic = float(line.split(":")[1])
-                elif line.startswith("Semantic Reason"):
-                    semantic_reason = line.split(":", 1)[1]
                 elif line.startswith("Final Plagiarism Score"):
                     final_score = float(line.split(":")[1])
 
             percent = int(final_score * 100)
 
-            # ---------- METRICS ----------
+            # ---------- DISPLAY ----------
             st.subheader("Similarity Scores")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Lexical Similarity", f"{int(lexical * 100)}%")
-            c2.metric("Structural Similarity", f"{int(structural * 100)}%")
-            c3.metric("Semantic Similarity", f"{int(semantic * 100)}%")
 
-            st.subheader("Final Plagiarism Percentage")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Lexical", f"{int(lexical * 100)}%")
+            c2.metric("Structural", f"{int(structural * 100)}%")
+            c3.metric("Semantic", f"{int(semantic * 100)}%")
+
             st.metric("Overall Plagiarism", f"{percent}%")
             st.progress(final_score)
 
             # ---------- VERDICT ----------
             if percent < 30:
+                verdict = "Low"
                 st.success("Low Plagiarism 🟢")
             elif percent < 60:
+                verdict = "Medium"
                 st.warning("Medium Plagiarism 🟡")
             else:
+                verdict = "High"
                 st.error("High Plagiarism 🔴")
 
-            # ---------- EXPLANATION ----------
-            st.subheader("Explanation")
-            st.write("🔹 **Lexical Analysis:**", lexical_reason)
-            st.write("🔹 **Structural Analysis:**", structural_reason)
-            st.write("🔹 **Semantic Analysis:**", semantic_reason)
+            # ---------- SAVE RESULT ----------
+            save_result(
+                st.session_state.username,
+                "code1.py",
+                "code2.py",
+                percent,
+                verdict
+            )
 
         else:
-            st.warning("Please upload both Python files.")
-
+            st.warning("Please upload both files.")
 
 # ==================================================
-# ================= DASHBOARD PAGE =================
+# ================= DASHBOARD =======================
 # ==================================================
 elif page == "Dashboard":
 
-    st.title("📊 Dashboard")
+    # ---------- FACULTY ----------
+    if st.session_state.role == "Faculty":
 
-    col1, col2, col3 = st.columns(3)
+        st.title("📊 Faculty Dashboard")
 
-    col1.metric("Total Files Checked", 24)
-    col2.metric("Average Similarity", "68%")
-    col3.metric("Last Result", "High Plagiarism")
+        results = get_all_results()
 
-    st.markdown("### Recent Analysis")
+        if results:
+            st.metric("Total Reports", len(results))
 
-    st.progress(0.68)
-    st.success("System Ready for New Analysis")
+            for row in results:
+                st.markdown("---")
+                st.write(f"👤 User: {row[1]}")
+                st.write(f"📄 File1: {row[2]}")
+                st.write(f"📄 File2: {row[3]}")
+                st.write(f"📊 Score: {row[4]}%")
+                st.write(f"⚠️ Verdict: {row[5]}")
+        else:
+            st.warning("No results yet — run plagiarism check first.")
+
+        # ---------- METRICS ----------
+        col1, col2, col3 = st.columns(3)
+
+        if results:
+            avg_score = sum(row[4] for row in results) / len(results)
+            avg_score = round(avg_score, 2)
+            last_verdict = results[-1][5]
+        else:
+            avg_score = 0
+            last_verdict = "N/A"
+
+        col1.metric("Total Files Checked", len(results))
+        col2.metric("Average Similarity", f"{avg_score}%")
+        col3.metric("Last Result", last_verdict)
+
+    # ---------- STUDENT ----------
+    elif st.session_state.role == "Student":
+
+        st.title("📊 Your Dashboard")
+
+        results = get_results(st.session_state.username)
+
+        if results:
+            for row in results:
+                st.markdown("---")
+                st.write(f"📄 File1: {row[2]}")
+                st.write(f"📄 File2: {row[3]}")
+                st.write(f"📊 Score: {row[4]}%")
+                st.write(f"⚠️ Verdict: {row[5]}")
+        else:
+            st.info("No results yet. Upload and check plagiarism!")
 
 # ---------- FOOTER ----------
 st.markdown("---")
