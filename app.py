@@ -18,10 +18,11 @@ st.set_page_config(page_title="Code Plagiarism Detection Tool", layout="centered
 create_table()
 add_default_user()
 
-# ---------- LOGIN ----------
+# ---------- SESSION ----------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+# ---------- LOGIN ----------
 if not st.session_state.logged_in:
 
     st.title("Login")
@@ -53,28 +54,26 @@ page = st.sidebar.radio("Go to", ["Upload Page", "Dashboard"])
 if page == "Upload Page" and st.session_state.role == "Student":
 
     st.title("Code Plagiarism Detection Tool")
+    st.write(f"Logged in as: {st.session_state.role}")
 
-    file1 = st.file_uploader("Upload Code File 1 (.py)", type=["py"])
-    file2 = st.file_uploader("Upload Code File 2 (.py)", type=["py"])
+    file1 = st.file_uploader("Upload Code File 1 (.py)", type=["py"], key="u1")
+    file2 = st.file_uploader("Upload Code File 2 (.py)", type=["py"], key="u2")
 
     if st.button("Check Plagiarism"):
 
         if file1 and file2:
 
-            # Save files
             with open("data/code1.py", "wb") as f:
                 f.write(file1.read())
 
             with open("data/code2.py", "wb") as f:
                 f.write(file2.read())
 
-            # Progress bar
             progress = st.progress(0)
             for i in range(100):
                 time.sleep(0.01)
                 progress.progress(i + 1)
 
-            # Run backend
             result = subprocess.check_output(
                 ["python", "final_score.py"],
                 universal_newlines=True
@@ -83,7 +82,7 @@ if page == "Upload Page" and st.session_state.role == "Student":
             st.subheader("Raw Output")
             st.text(result)
 
-            # ---------- PARSING ----------
+            # ---------- PARSE ----------
             lexical = structural = semantic = final_score = 0.0
 
             for line in result.splitlines():
@@ -120,11 +119,11 @@ if page == "Upload Page" and st.session_state.role == "Student":
                 verdict = "High"
                 st.error("High Plagiarism 🔴")
 
-            # ---------- SAVE RESULT ----------
+            # ---------- SAVE ----------
             save_result(
                 st.session_state.username,
-                "code1.py",
-                "code2.py",
+                file1.name,
+                file2.name,
                 percent,
                 verdict
             )
@@ -142,6 +141,31 @@ elif page == "Dashboard":
 
         st.title("📊 Faculty Dashboard")
 
+        # ✅ Upload for faculty also
+        st.subheader("Upload Code")
+
+        f1 = st.file_uploader("Upload File 1", type=["py"], key="f1")
+        f2 = st.file_uploader("Upload File 2", type=["py"], key="f2")
+
+        if st.button("Check Plagiarism (Faculty)"):
+            if f1 and f2:
+
+                with open("data/code1.py", "wb") as f:
+                    f.write(f1.read())
+
+                with open("data/code2.py", "wb") as f:
+                    f.write(f2.read())
+
+                result = subprocess.check_output(
+                    ["python", "final_score.py"],
+                    universal_newlines=True
+                )
+
+                st.text(result)
+            else:
+                st.warning("Upload both files")
+
+        # ---------- RESULTS ----------
         results = get_all_results()
 
         if results:
@@ -155,26 +179,10 @@ elif page == "Dashboard":
                 st.write(f"📊 Score: {row[4]}%")
                 st.write(f"⚠️ Verdict: {row[5]}")
         else:
-            st.warning("No results yet — run plagiarism check first.")
-
-        # ---------- METRICS ----------
-        col1, col2, col3 = st.columns(3)
-
-        if results:
-            avg_score = sum(row[4] for row in results) / len(results)
-            avg_score = round(avg_score, 2)
-            last_verdict = results[-1][5]
-        else:
-            avg_score = 0
-            last_verdict = "N/A"
-
-        col1.metric("Total Files Checked", len(results))
-        col2.metric("Average Similarity", f"{avg_score}%")
-        col3.metric("Last Result", last_verdict)
+            st.warning("No results yet")
 
     # ---------- STUDENT ----------
-    elif st.session_state.role == "Student":
-
+    else:
         st.title("📊 Your Dashboard")
 
         results = get_results(st.session_state.username)
@@ -187,7 +195,7 @@ elif page == "Dashboard":
                 st.write(f"📊 Score: {row[4]}%")
                 st.write(f"⚠️ Verdict: {row[5]}")
         else:
-            st.info("No results yet. Upload and check plagiarism!")
+            st.info("No results yet")
 
 # ---------- FOOTER ----------
 st.markdown("---")
