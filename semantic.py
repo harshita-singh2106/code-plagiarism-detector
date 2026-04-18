@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -7,9 +8,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 def normalize_code(code):
     # remove comments
     code = re.sub(r'//.*|/\*[\s\S]*?\*/|#.*', '', code)
-
-    # lowercase for consistency
-    code = code.lower()
 
     # remove extra spaces
     code = re.sub(r'\s+', ' ', code)
@@ -48,15 +46,13 @@ def ngram_similarity(code1, code2, n=3):
     return len(ngrams1 & ngrams2) / len(ngrams1 | ngrams2)
 
 
-# -------- SEMANTIC SIMILARITY --------
+# -------- SEMANTIC SIMILARITY (TF-IDF) --------
 def semantic_similarity(code1, code2):
-    vectorizer = TfidfVectorizer(token_pattern=r'\b\w+\b')
+    vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform([code1, code2])
 
     sim = cosine_similarity(vectors[0], vectors[1])[0][0]
-
-    # safety clamp
-    return max(0, min(sim, 1))
+    return sim
 
 
 # -------- FINAL SCORE --------
@@ -68,7 +64,7 @@ def calculate_score(code1, code2):
     ngram = ngram_similarity(code1, code2)
     sem = semantic_similarity(code1, code2)
 
-    # balanced weighting
-    final = (0.4 * lex) + (0.3 * ngram) + (0.3 * sem)
+    # weighted score
+    final = (0.3 * lex) + (0.3 * ngram) + (0.4 * sem)
 
     return lex, ngram, sem, final
